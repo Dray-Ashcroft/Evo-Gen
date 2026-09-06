@@ -8,7 +8,7 @@
 
 > **Evogen-Mapper** is an interactive visualization exploring **phylogenetic data matrices, cladograms, and evolutionary relationships** through dynamic character and taxa management.
 >
-> 🧬 **Phylogeny** · 🌳 **Cladistics** · 🌀 **Evolution**
+🧬 **Phylogeny** · 🌳 **Cladistics** · 🌀 **Evolution**
 
 **🔬 [Explore the Simulation](YOUR-LINK-HERE)**
 
