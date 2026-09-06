@@ -1,48 +1,57 @@
+<p align="center">
+  <img src="assets/repo-banner.png" alt="Evogen-Mapper — Phylogenetic Data Matrix Engine" width="100%">
+</p>
+
 # 🧬 Evogen-Mapper
 
-<p align="center">
-  <img src="assets/repo-banner.png" alt="Evogen-Mapper Banner" width="100%">
-  </p>
+### *Phylogenetic Data Matrix Engine*
 
-  ### *Phylogenetic Data Matrix Engine*
+> **Evogen-Mapper** is an interactive visualization exploring **phylogenetic data matrices, cladograms, and evolutionary relationships** through dynamic character and taxa management.
+>
+> 🧬 **Phylogeny** · 🌳 **Cladistics** · 🌀 **Evolution**
 
-  > An interactive evolutionary biology engine for constructing, editing, and visualizing phylogenetic data matrices, cladograms, and lineage relationships.
+**🔬 [Explore the Simulation](YOUR-LINK-HERE)**
 
-  **🧬 Phylogeny · 🌳 Cladistics · 🌀 Evolution**
+---
 
-  ---
+## ✦ Features
 
-  ## ✦ Features
+**📊 Live Data Matrix**  
+Create and edit phylogenetic character matrices in real time.
 
-  **📊 Live Data Matrix**  
-  Create and edit phylogenetic character matrices in real time.
+**🌳 Interactive Cladograms**  
+Generate dynamic evolutionary trees from matrix data.
 
-  **🌳 Interactive Cladograms**  
-  Generate dynamic evolutionary trees from matrix data.
+**🧬 Taxa Management**  
+Add, edit, replace, rename, and reorganize taxa.
 
-  **🧬 Taxa Management**  
-  Add, edit, replace, rename, and reorganize taxa.
+**⏳ Evolutionary Timelines**  
+Adjust evolutionary timelines through the matrix interface.
 
-  **⏳ Evolutionary Timelines**  
-  Adjust evolutionary timelines through the matrix interface.
+**📑 Tabbed Workspace**  
+Manage multiple organisms and evolutionary datasets.
 
-  **📑 Tabbed Workspace**  
-  Manage multiple organisms and evolutionary datasets.
+**🛠️ Dev Mode**  
+Access debugging tools and live trait manipulation for development and testing.
 
-  **🛠️ Dev Mode**  
-  Access debugging tools and live trait manipulation for development and testing.
+---
 
-  ---
+## 🧬 Core Concepts
 
-  ## ⚙️ Technology
+**Phylogenetic Matrices · Taxa · Characters · Cladograms · Evolutionary Relationships · Cladistics**
 
-  **HTML · CSS · JavaScript**
+---
 
-  **Database & Assets:** Supabase  
-  **Hosting:** GitHub Pages
+## ⚙️ Technology
 
-  ---
+**HTML · CSS · JavaScript**
 
-  ## 📜 License
+**Database & Assets:** Supabase  
+**Repository:** GitHub & Codeberg  
+**Hosting:** Cloudflare
 
-  **GNU General Public License v3.0 (GPL-3.0)**
+---
+
+## 📜 License
+
+Distributed under the **GNU General Public License v3.0 (GPL-3.0)**.
