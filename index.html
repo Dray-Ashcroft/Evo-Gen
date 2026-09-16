@@ -3,6 +3,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EvoGen - Mapper</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0b0c10;
@@ -52,7 +55,7 @@
         h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
         .brand-accent { color: var(--accent-hover); }
         .brand-suffix { color: var(--text-primary); opacity: 0.82; }
-        .subtitle { font-size: 0.85rem; color: var(--text-muted); }
+        .subtitle { font-size: 0.85rem; color: var(--text-muted); font-family: var(--ui-display); font-weight: 500; letter-spacing: -0.005em; }
         .dev-control-wrapper { display: flex; align-items: center; gap: 0.5rem; }
         .track-toggle-btn {
             background: #161925; border: 1px solid var(--panel-border); color: var(--text-primary);
@@ -582,13 +585,67 @@
         .pcf-status-opt.living.active { background: rgba(16,185,129,0.18); color: #10b981; }
         .pcf-status-opt.extinct.active { background: rgba(239,68,68,0.18); color: #ef4444; }
 
+        /* ── TAXON STATUS: third option (Extant + Extinct) ── */
+        .pcf-status-toggle { flex-wrap: wrap; justify-content: flex-end; }
+        .pcf-status-opt.both.active {
+            background: rgba(239,68,68,0.14); color: #f8fafc;
+            box-shadow: inset 0 0 0 1px rgba(16,185,129,0.45);
+        }
+        .pc-status-pill.both {
+            background: rgba(239,68,68,0.10); color: #e2e8f0;
+            border: 1px solid rgba(16,185,129,0.30);
+        }
+        /* Cladogram indicator: small green dot marking an extant taxon */
+        .taxon-extant-dot { fill: #10b981; font-style: normal; font-size: 12px; font-weight: 700; }
+
         /* ── IMAGE: large, full-width hero ── */
         .pcf-body { margin-top: 16px; }
         .pcf-img-frame {
             width: 100%; height: 190px; border-radius: 14px; border: 2px dashed #1c1e38;
             background: #060710; display: flex; align-items: center; justify-content: center;
-            font-size: 68px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s;
+            font-size: 68px; transition: border-color 0.2s, box-shadow 0.2s;
+            position: relative;
         }
+        /* Clipping lives here (not on .pcf-img-frame) so the absolutely-positioned
+           info popover — a sibling of this element — is never cut off by the
+           frame's bounds on shorter breakpoints (e.g. the 150px mobile height). */
+        .pcf-img-content {
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; border-radius: 12px;
+        }
+
+        /* ── Info button + popover (image provenance note) ── */
+        .pcf-info-btn {
+            position: absolute; top: 10px; right: 10px; z-index: 6;
+            width: 27px; height: 27px; border-radius: 50%;
+            background: rgba(6,7,16,0.72); border: 1px solid rgba(99,102,241,0.55);
+            color: #c7d2fe; font: 700 13px/1 var(--ui-sans, sans-serif); font-style: italic;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; padding: 0; transition: background 0.15s, box-shadow 0.15s;
+        }
+        .pcf-info-btn:hover, .pcf-info-btn[aria-expanded="true"] {
+            background: rgba(6,7,16,0.92); box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+        }
+        .pcf-info-popover {
+            position: absolute; top: 44px; right: 10px; z-index: 7;
+            width: min(240px, calc(100% - 20px));
+            background: rgba(10,11,22,0.97); border: 1px solid rgba(99,102,241,0.5);
+            border-radius: 10px; padding: 12px 13px 13px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            color: #d5d9ec; font-size: 11.5px; line-height: 1.45;
+        }
+        .pcf-info-popover[hidden] { display: none; }
+        .pcf-info-popover-title {
+            font-weight: 750; color: #eef0ff; font-size: 12px; margin: 0 22px 6px 0;
+        }
+        .pcf-info-popover-body { margin: 0; color: #aeb4d6; }
+        .pcf-info-popover-close {
+            position: absolute; top: 8px; right: 8px; width: 18px; height: 18px;
+            border-radius: 50%; border: none; background: transparent; color: #8791b8;
+            font-size: 13px; line-height: 1; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; padding: 0;
+        }
+        .pcf-info-popover-close:hover { color: #eef0ff; }
         .pcf-img-frame img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
         .pcf-img-frame.editable { cursor: pointer; border-color: #3b82f6; }
         .pcf-img-frame.editable:hover { box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
@@ -761,6 +818,76 @@
         }
         #spawn-tray.visible { display: flex; }
 
+        /* ── UNIFIED LEGEND (taxon status + lineages) — in-flow, collapsible ── */
+        .taxon-status-legend {
+            align-self: flex-start; margin-top: 10px; margin-left: 4px;
+            max-width: 100%; flex-shrink: 0;
+            display: flex; align-items: flex-start; gap: 9px;
+            padding: 6px 10px;
+            background: rgba(14,15,26,0.92); border: 1px solid #2a2d42;
+            border-radius: 8px; box-shadow: 0 5px 18px rgba(0,0,0,0.32);
+            color: #aeb7d4; font: 700 9px/1.3 var(--ui-sans); letter-spacing: 0.04em;
+        }
+        .taxon-status-legend.hidden { display: none; }
+        .taxon-status-legend .tsl-toggle {
+            display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+            background: none; border: none; margin: 0; padding: 2px 0;
+            color: #e5e7eb; font: inherit; letter-spacing: 0.09em;
+            text-transform: uppercase; cursor: pointer; transition: color 0.15s;
+        }
+        .taxon-status-legend .tsl-toggle:hover { color: #fff; }
+        .taxon-status-legend .tsl-caret {
+            display: inline-block; font-size: 9px; line-height: 1;
+            color: var(--accent); transition: transform 0.2s ease;
+        }
+        .taxon-status-legend.collapsed .tsl-caret { transform: rotate(-90deg); }
+        .taxon-status-legend.collapsed .tsl-body { display: none; }
+        .taxon-status-legend .tsl-body {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; min-width: 0;
+        }
+        .taxon-status-legend .tsl-group {
+            display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 12px;
+        }
+        .taxon-status-legend .tsl-group-title {
+            color: #e5e7eb; text-transform: uppercase; letter-spacing: 0.09em;
+        }
+        .taxon-status-legend .tsl-sep {
+            width: 1px; align-self: stretch; min-height: 12px;
+            background: #2a2d42; flex-shrink: 0;
+        }
+        .taxon-status-legend .tsl-item { display: inline-flex; align-items: center; gap: 5px; }
+        .taxon-status-legend .tsl-mark {
+            display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0;
+            color: #ef4444; font-size: 12px; line-height: 1;
+        }
+        .taxon-status-legend .tsl-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #10b981; display: inline-block; flex-shrink: 0;
+        }
+        .taxon-status-legend .tsl-name { color: #e5e7eb; }
+        .taxon-status-legend .tsl-desc { color: #7f89a9; font-weight: 600; }
+        /* Lineage rows — populated automatically from the active lineage map */
+        .taxon-status-legend .tsl-lineage-items {
+            display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
+        }
+        .taxon-status-legend .tsl-lineage-item {
+            display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+        }
+        .taxon-status-legend .tsl-lineage-dot {
+            width: 8px; height: 8px; border-radius: 3px;
+            display: inline-block; flex-shrink: 0;
+        }
+        @media (max-width: 700px) {
+            .taxon-status-legend {
+                width: 100%; margin-left: 0; margin-right: 0;
+                gap: 7px; font-size: 8.5px; padding: 6px 8px;
+            }
+            .taxon-status-legend .tsl-body { gap: 4px 8px; }
+            .taxon-status-legend .tsl-group { flex: 1 1 100%; }
+            .taxon-status-legend .tsl-item { flex: 1 1 100%; }
+            .taxon-status-legend .tsl-sep { display: none; }
+        }
+
         .spawn-tray-header {
             display: flex; align-items: center; justify-content: space-between;
         }
@@ -898,7 +1025,7 @@
 
     
 /* Safe UI polish: presentation-only; no cladogram data or interaction logic altered. */
-:root{--ui-sans:Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--ui-display:Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--ui-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace} body,button,input,textarea{font-family:var(--ui-sans)} h1,.pcf-name,.pc-toolbar-title{font-family:var(--ui-display);font-weight:750;letter-spacing:-.018em;text-rendering:optimizeLegibility}.pcf-name{font-size:20px;line-height:1.18}.pcf-fact-label,.pcf-features-label,.pcf-chrono-head{font-weight:750;letter-spacing:.09em}.pcf-chrono-head{color:#7580a8;font-size:10px}.pcf-chrono-tag,.pcf-chrono-input,.mya-label,.zoom-pct-label{font-family:var(--ui-mono);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.015em}.pcf-chrono-tag,.pcf-chrono-input{font-size:11px;font-weight:700}.pcf-facts-row{padding:16px 0}.pcf-fact-value:placeholder-shown,.pcf-features-text:placeholder-shown{color:#67708f;font-style:italic;opacity:1}.cladogram-node.selected{filter:drop-shadow(0 0 7px rgba(96,165,250,.95));stroke:#f8fafc;stroke-width:2.8px}.cladogram-node:hover{filter:drop-shadow(0 0 5px rgba(99,102,241,.65))}.taxon-node-label{paint-order:stroke;stroke:#07080d;stroke-width:3px;stroke-linejoin:round}.canvas-timeline-direction{position:absolute;top:11px;left:50%;transform:translateX(-50%);z-index:4;color:#8d96b6;font:700 9px/1 var(--ui-sans);letter-spacing:.11em;text-transform:uppercase;pointer-events:none;background:rgba(7,8,13,.72);border:1px solid rgba(75,85,99,.4);border-radius:999px;padding:5px 10px}.canvas-lineage-legend{position:absolute;right:14px;bottom:13px;left:auto;z-index:5;max-width:min(450px,calc(100% - 28px));display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 9px;background:rgba(14,15,26,.92);border:1px solid #2a2d42;border-radius:8px;box-shadow:0 5px 18px rgba(0,0,0,.32);color:#aeb7d4;font:700 9px/1.2 var(--ui-sans);letter-spacing:.04em}.canvas-lineage-legend .legend-title{color:#e5e7eb;text-transform:uppercase;letter-spacing:.09em}.canvas-lineage-legend .legend-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.canvas-lineage-legend .legend-dot{width:8px;height:8px;border-radius:3px;display:inline-block}.canvas-lineage-legend .legend-note{color:#7f89a9;font-weight:600}@media(max-width:700px){.canvas-lineage-legend{right:8px;bottom:8px;font-size:8px;padding:6px 7px}.canvas-timeline-direction{top:7px;font-size:8px;padding:4px 8px}}
+:root{--ui-sans:'Inter',"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--ui-display:'Space Grotesk','Inter',"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--ui-mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace} body,button,input,textarea{font-family:var(--ui-sans)} h1,.pcf-name,.pc-toolbar-title{font-family:var(--ui-display);font-weight:750;letter-spacing:-.018em;text-rendering:optimizeLegibility}.pcf-name{font-size:20px;line-height:1.18}.pcf-fact-label,.pcf-features-label,.pcf-chrono-head{font-weight:750;letter-spacing:.09em}.pcf-chrono-head{color:#7580a8;font-size:10px}.pcf-chrono-tag,.pcf-chrono-input,.mya-label,.zoom-pct-label{font-family:var(--ui-mono);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.015em}.pcf-chrono-tag,.pcf-chrono-input{font-size:11px;font-weight:700}.pcf-facts-row{padding:16px 0}.pcf-fact-value:placeholder-shown,.pcf-features-text:placeholder-shown{color:#67708f;font-style:italic;opacity:1}.cladogram-node.selected{filter:drop-shadow(0 0 7px rgba(96,165,250,.95));stroke:#f8fafc;stroke-width:2.8px}.cladogram-node:hover{filter:drop-shadow(0 0 5px rgba(99,102,241,.65))}.taxon-node-label{paint-order:stroke;stroke:#07080d;stroke-width:3px;stroke-linejoin:round}.canvas-timeline-direction{position:absolute;top:11px;left:50%;transform:translateX(-50%);z-index:4;color:#8d96b6;font:700 9px/1 var(--ui-sans);letter-spacing:.11em;text-transform:uppercase;pointer-events:none;background:rgba(7,8,13,.72);border:1px solid rgba(75,85,99,.4);border-radius:999px;padding:5px 10px}.canvas-lineage-legend{position:absolute;right:14px;bottom:13px;left:auto;z-index:5;max-width:min(450px,calc(100% - 28px));display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 9px;background:rgba(14,15,26,.92);border:1px solid #2a2d42;border-radius:8px;box-shadow:0 5px 18px rgba(0,0,0,.32);color:#aeb7d4;font:700 9px/1.2 var(--ui-sans);letter-spacing:.04em}.canvas-lineage-legend .legend-title{color:#e5e7eb;text-transform:uppercase;letter-spacing:.09em}.canvas-lineage-legend .legend-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.canvas-lineage-legend .legend-dot{width:8px;height:8px;border-radius:3px;display:inline-block}.canvas-lineage-legend .legend-note{color:#7f89a9;font-weight:600}@media(max-width:700px){.canvas-lineage-legend{right:8px;bottom:8px;font-size:8px;padding:6px 7px}.canvas-timeline-direction{top:7px;font-size:8px;padding:4px 8px}}
 
 </style>
 </head>
@@ -907,21 +1034,23 @@
         <div class="header-top">
             <div class="brand-lockup">
                 <div class="brand-logo-box">
-                    <svg class="brand-logo-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M2 12 H9"></path>
-                        <path d="M9 12 L14 4 H21"></path>
-                        <path d="M9 12 H21"></path>
-                        <path d="M9 12 L14 20 H21"></path>
-                        <circle cx="2" cy="12" r="1.6" fill="currentColor" stroke="none"></circle>
-                        <circle cx="9" cy="12" r="1.6" fill="currentColor" stroke="none"></circle>
-                        <circle cx="21" cy="4" r="1.6" fill="currentColor" stroke="none"></circle>
-                        <circle cx="21" cy="12" r="1.6" fill="currentColor" stroke="none"></circle>
-                        <circle cx="21" cy="20" r="1.6" fill="currentColor" stroke="none"></circle>
+                    <svg class="brand-logo-icon" viewBox="0 0 150 100" xmlns="http://www.w3.org/2000/svg" fill="currentColor" stroke="none" role="img" aria-label="Lizard silhouette">
+                        <path d="M 2 58 C 16 56, 28 52, 38 45 C 40 43, 42 43, 44 45 L 48 50 C 40 56, 28 61, 14 64 C 9 65, 5 63, 2 58 Z"></path>
+                        <ellipse cx="70" cy="46" rx="30" ry="10" transform="rotate(-6 70 46)"></ellipse>
+                        <polygon points="94,38 122,32 128,38 122,44 96,52"></polygon>
+                        <path d="M 92 52 C 90 58, 92 62, 98 64 C 94 67, 88 66, 84 62 C 81 58, 82 53, 86 49 Z"></path>
+                        <polygon points="94,63 91,69 98,66"></polygon>
+                        <polygon points="98,65 96,71 103,68"></polygon>
+                        <polygon points="102,64 101,70 107,66"></polygon>
+                        <path d="M 52 53 C 50 59, 52 63, 58 65 C 54 68, 48 67, 44 63 C 41 59, 42 54, 46 50 Z"></path>
+                        <polygon points="54,64 51,70 58,67"></polygon>
+                        <polygon points="58,66 56,72 63,69"></polygon>
+                        <polygon points="62,65 61,71 67,67"></polygon>
                     </svg>
                 </div>
                 <div>
                     <h1><span class="brand-accent">EvoGen</span> <span class="brand-suffix">- Mapper</span></h1>
-                    <div class="subtitle">Mapping Evolutionary Lineages with Matrix Precision</div>
+                    <div class="subtitle">Amniote Evolutionary Lineage Mapper</div>
                 </div>
             </div>
             <div class="dev-control-wrapper">
@@ -987,7 +1116,7 @@
             <div id="cladogram-view-wrapper" class="svg-viewport-wrapper" style="display: block;">
                 <div class="zoom-hint" id="zoom-hint">Drag to pan · double-tap to reset · use arrows to navigate</div>
                 <div class="pan-locked-badge" id="pan-locked-badge">🔒 Pan/Zoom Locked</div>
-                <div id="zoom-pan-stage" class="" style="transform: translate(0px, 0px) scale(1);">
+                <div id="zoom-pan-stage" class="no-transition" style="transform: translate(-3.95791px, -7.08177px) scale(1.0775);">
                     <svg id="cladogram-canvas" viewBox="0 0 1160 580" preserveAspectRatio="xMidYMid meet">
                         <g id="grid-group" stroke="var(--grid-line)" stroke-width="1" stroke-dasharray="4 4">
                             <line x1="40" y1="50" x2="1140" y2="50"></line>
@@ -1001,9 +1130,9 @@
                             <g id="periods-container"><text x="72.5" y="148" text-anchor="middle" class="period-label">Late Carboniferous</text><text x="174" y="148" text-anchor="middle" class="period-label">Early Permian</text><text x="304" y="148" text-anchor="middle" class="period-label">Triassic</text><text x="464" y="148" text-anchor="middle" class="period-label">Jurassic</text><text x="666" y="148" text-anchor="middle" class="period-label">Cretaceous</text><text x="882" y="148" text-anchor="middle" class="period-label">Paleogene / Neogene</text></g>
                         </g>
                         <g id="pins-group"><line x1="25" y1="80" x2="25" y2="90" stroke="var(--tick-line)" stroke-width="1.5" stroke-linecap="round"></line><circle cx="25" cy="76" r="4" fill="#4b5563" stroke="#6b7280" stroke-width="1"></circle><text x="25" y="68" text-anchor="middle" class="mya-label">350</text><line x1="120" y1="80" x2="120" y2="90" stroke="var(--tick-line)" stroke-width="1.5" stroke-linecap="round"></line><circle cx="120" cy="76" r="4" fill="#4b5563" stroke="#6b7280" stroke-width="1"></circle><text x="120" y="68" text-anchor="middle" class="mya-label">299</text><line x1="228" y1="80" x2="228" y2="90" stroke="var(--tick-line)" stroke-width="1.5" stroke-linecap="round"></line><circle cx="228" cy="76" r="4" fill="#4b5563" stroke="#6b7280" stroke-width="1"></circle><text x="228" y="68" text-anchor="middle" class="mya-label">252</text><line x1="380" y1="80" x2="380" y2="90" stroke="var(--tick-line)" stroke-width="1.5" stroke-linecap="round"></line><circle cx="380" cy="76" r="4" fill="#4b5563" stroke="#6b7280" stroke-width="1"></circle><text x="380" y="68" text-anchor="middle" class="mya-label">201</text><line x1="548" y1="80" x2="548" y2="90" stroke="var(--tick-line)" stroke-width="1.5" stroke-linecap="round"></line><circle cx="548" cy="76" r="4" fill="#4b5563" stroke="#6b7280" stroke-width="1"></circle><text x="548" y="68" text-anchor="middle" class="mya-label">145</text><line x1="784" y1="80" x2="784" y2="90" stroke="var(--tick-line)" stroke-width="1.5" stroke-linecap="round"></line><circle cx="784" cy="76" r="4" fill="#4b5563" stroke="#6b7280" stroke-width="1"></circle><text x="784" y="68" text-anchor="middle" class="mya-label">66</text><line x1="980" y1="80" x2="980" y2="90" stroke="var(--tick-line)" stroke-width="1.5" stroke-linecap="round"></line><circle cx="980" cy="76" r="4" fill="#4b5563" stroke="#6b7280" stroke-width="1"></circle><text x="980" y="68" text-anchor="middle" class="mya-label">0</text></g>
-                        <g id="edges-group"><path d="M 80.88235294117646 189 L 90.19607843137256 189 L 90.19607843137256 228" class="edge-path active-lineage"></path><path d="M 90.19607843137256 228 L 105.09803921568627 228 L 105.09803921568627 310" class="edge-path active-lineage"></path><path d="M 105.09803921568627 310 L 129.19148936170214 310 L 129.19148936170214 251" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #3b82f6;"></path><path d="M 105.09803921568627 310 L 209.61702127659572 310 L 209.61702127659572 370" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 129.19148936170214 251 L 383 251 L 383 214" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #3b82f6;"></path><path d="M 129.19148936170214 251 L 263.7647058823529 251 L 263.7647058823529 188" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #3b82f6;"></path><path d="M 209.61702127659572 370 L 956.2424242424242 370 L 956.2424242424242 368" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 209.61702127659572 370 L 278.6666666666667 370 L 278.6666666666667 441" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 278.6666666666667 441 L 778.0253164556962 441 L 778.0253164556962 378" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 278.6666666666667 441 L 533 441 L 533 422" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 278.6666666666667 441 L 521 441 L 521 396" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 278.6666666666667 441 L 518 441 L 518 463" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 105.09803921568627 310 L 353.1764705882353 310 L 353.1764705882353 293" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #f59e0b;"></path><path d="M 278.6666666666667 441 L 778.0253164556962 441 L 778.0253164556962 460" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 778.0253164556962 460 L 792.9090909090909 460 L 792.9090909090909 503" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 792.9090909090909 503 L 917.6363636363636 503 L 917.6363636363636 529" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path></g>
-                        <g id="nodes-group"><circle cx="80.88235294117646" cy="189" r="7" class="cladogram-node root-node extinct-node" aria-label="Early Amniotes. Open profile card."><title>Early Amniotes — open profile card</title></circle><circle cx="90.19607843137256" cy="228" r="5.5" class="cladogram-node" aria-label="Sauropsida. Open profile card."><title>Sauropsida — open profile card</title></circle><circle cx="105.09803921568627" cy="310" r="5.5" class="cladogram-node" aria-label="Diapsida. Open profile card."><title>Diapsida — open profile card</title></circle><circle cx="129.19148936170214" cy="251" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #3b82f6;" aria-label="Lepidosauromorpha. Open profile card."><title>Lepidosauromorpha — open profile card</title></circle><circle cx="383" cy="214" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #3b82f6;" aria-label="Rhynchocephalia (Tuatara). Open profile card."><title>Rhynchocephalia (Tuatara) — open profile card</title></circle><circle cx="263.7647058823529" cy="188" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #3b82f6;" aria-label="Squamata (Lizards &amp; Snakes). Open profile card."><title>Squamata (Lizards &amp; Snakes) — open profile card</title></circle><circle cx="209.61702127659572" cy="370" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Archosauromorpha. Open profile card."><title>Archosauromorpha — open profile card</title></circle><circle cx="956.2424242424242" cy="368" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Crocodilia (Crocodiles). Open profile card."><title>Crocodilia (Crocodiles) — open profile card</title></circle><circle cx="278.6666666666667" cy="441" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Dinosauria. Open profile card."><title>Dinosauria — open profile card</title></circle><circle cx="778.0253164556962" cy="378" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Tyrannosaurus rex †. Open profile card."><title>Tyrannosaurus rex † — open profile card</title></circle><circle cx="533" cy="422" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Archeopteryx †. Open profile card."><title>Archeopteryx † — open profile card</title></circle><circle cx="521" cy="396" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Brachiosaurus †. Open profile card."><title>Brachiosaurus † — open profile card</title></circle><circle cx="518" cy="463" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Stegosaurus †. Open profile card."><title>Stegosaurus † — open profile card</title></circle><circle cx="353.1764705882353" cy="293" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #f59e0b;" aria-label="Testudines. Open profile card."><title>Testudines — open profile card</title></circle><circle cx="778.0253164556962" cy="460" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Neornithes (Extinct Members). Open profile card."><title>Neornithes (Extinct Members) — open profile card</title></circle><circle cx="792.9090909090909" cy="503" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Neornithes (Living Members). Open profile card."><title>Neornithes (Living Members) — open profile card</title></circle><circle cx="917.6363636363636" cy="529" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Aves. Open profile card."><title>Aves — open profile card</title></circle></g>
-                        <g id="labels-group"><text x="75.88235294117646" y="174" class="taxon-node-label extinct">Early Amniotes</text><text x="97.19607843137256" y="221" class="taxon-node-label">Sauropsida</text><text x="97.09803921568627" y="333" class="taxon-node-label">Diapsida</text><text x="135.19148936170214" y="240" class="taxon-node-label lineage-tinted" style="--lineage-color: #3b82f6;">Lepidosauromorpha</text><text x="395" y="218" class="taxon-node-label lineage-tinted" style="--lineage-color: #3b82f6;">Rhynchocephalia (Tuatara)</text><text x="275.7647058823529" y="192" class="taxon-node-label lineage-tinted" style="--lineage-color: #3b82f6;">Squamata (Lizards &amp; Snakes)</text><text x="181.61702127659572" y="389" class="taxon-node-label lineage-tinted" style="--lineage-color: #10b981;">Archosauromorpha</text><text x="968.2424242424242" y="372" class="taxon-node-label lineage-tinted" style="--lineage-color: #10b981;">Crocodilia (Crocodiles)</text><text x="274.6666666666667" y="461" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Dinosauria</text><text x="790.0253164556962" y="382" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Tyrannosaurus rex †</text><text x="545" y="426" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Archeopteryx †</text><text x="533" y="400" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Brachiosaurus †</text><text x="530" y="467" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Stegosaurus †</text><text x="365.1764705882353" y="297" class="taxon-node-label lineage-tinted" style="--lineage-color: #f59e0b;">Testudines</text><text x="798.0253164556962" y="459" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Neornithes (Extinct Members)</text><text x="804.9090909090909" y="498" class="taxon-node-label lineage-tinted" style="--lineage-color: #10b981;">Neornithes (Living Members)</text><text x="929.6363636363636" y="533" class="taxon-node-label lineage-tinted" style="--lineage-color: #10b981;">Aves</text></g>
+                        <g id="edges-group"><path d="M 80.88235294117646 189 L 90.19607843137256 189 L 90.19607843137256 228" class="edge-path active-lineage"></path><path d="M 90.19607843137256 228 L 105.09803921568627 228 L 105.09803921568627 310" class="edge-path active-lineage"></path><path d="M 105.09803921568627 310 L 129.19148936170214 310 L 129.19148936170214 251" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #3b82f6;"></path><path d="M 105.09803921568627 310 L 209.61702127659572 310 L 209.61702127659572 363" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 129.19148936170214 251 L 383 251 L 383 214" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #3b82f6;"></path><path d="M 129.19148936170214 251 L 263.7647058823529 251 L 263.7647058823529 188" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #3b82f6;"></path><path d="M 209.61702127659572 363 L 956.2424242424242 363 L 956.2424242424242 322" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 209.61702127659572 363 L 278.6666666666667 363 L 278.6666666666667 441" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 278.6666666666667 441 L 778.0253164556962 441 L 778.0253164556962 410" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 278.6666666666667 441 L 533 441 L 533 422" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 278.6666666666667 441 L 521 441 L 521 396" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 278.6666666666667 441 L 518 441 L 518 463" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 105.09803921568627 310 L 353.1764705882353 310 L 353.1764705882353 293" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #f59e0b;"></path><path d="M 278.6666666666667 441 L 778.0253164556962 441 L 778.0253164556962 460" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 778.0253164556962 460 L 792.9090909090909 460 L 792.9090909090909 503" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path><path d="M 792.9090909090909 503 L 917.6363636363636 503 L 917.6363636363636 533" class="edge-path active-lineage lineage-tinted" style="--lineage-color: #10b981;"></path></g>
+                        <g id="nodes-group"><circle cx="80.88235294117646" cy="189" r="7" class="cladogram-node root-node extinct-node" aria-label="Early Amniotes† ●. Open profile card."><title>Early Amniotes† ● — open profile card</title></circle><circle cx="90.19607843137256" cy="228" r="5.5" class="cladogram-node extinct-node" aria-label="Sauropsida† ●. Open profile card."><title>Sauropsida† ● — open profile card</title></circle><circle cx="105.09803921568627" cy="310" r="5.5" class="cladogram-node" aria-label="Diapsida ●. Open profile card."><title>Diapsida ● — open profile card</title></circle><circle cx="129.19148936170214" cy="251" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #3b82f6;" aria-label="Lepidosauromorpha† ●. Open profile card."><title>Lepidosauromorpha† ● — open profile card</title></circle><circle cx="383" cy="214" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #3b82f6;" aria-label="Rhynchocephalia (Tuatara)† ●. Open profile card."><title>Rhynchocephalia (Tuatara)† ● — open profile card</title></circle><circle cx="263.7647058823529" cy="188" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #3b82f6;" aria-label="Squamata (Lizards &amp; Snakes)† ●. Open profile card."><title>Squamata (Lizards &amp; Snakes)† ● — open profile card</title></circle><circle cx="209.61702127659572" cy="363" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Archosauromorpha† ●. Open profile card."><title>Archosauromorpha† ● — open profile card</title></circle><circle cx="956.2424242424242" cy="322" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Crocodilia (Crocodiles)† ●. Open profile card."><title>Crocodilia (Crocodiles)† ● — open profile card</title></circle><circle cx="278.6666666666667" cy="441" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Dinosauria† ●. Open profile card."><title>Dinosauria† ● — open profile card</title></circle><circle cx="778.0253164556962" cy="410" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Tyrannosaurus rex†. Open profile card."><title>Tyrannosaurus rex† — open profile card</title></circle><circle cx="533" cy="422" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Archeopteryx†. Open profile card."><title>Archeopteryx† — open profile card</title></circle><circle cx="521" cy="396" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Brachiosaurus†. Open profile card."><title>Brachiosaurus† — open profile card</title></circle><circle cx="518" cy="463" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Stegosaurus†. Open profile card."><title>Stegosaurus† — open profile card</title></circle><circle cx="353.1764705882353" cy="293" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #f59e0b;" aria-label="Testudines† ●. Open profile card."><title>Testudines† ● — open profile card</title></circle><circle cx="778.0253164556962" cy="460" r="5.5" class="cladogram-node extinct-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Neornithes (Extinct Members)†. Open profile card."><title>Neornithes (Extinct Members)† — open profile card</title></circle><circle cx="792.9090909090909" cy="503" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Neornithes (Living Members) ●. Open profile card."><title>Neornithes (Living Members) ● — open profile card</title></circle><circle cx="917.6363636363636" cy="533" r="5.5" class="cladogram-node lineage-tinted" style="--lineage-color: #10b981;" aria-label="Aves ●. Open profile card."><title>Aves ● — open profile card</title></circle></g>
+                        <g id="labels-group"><text x="75.88235294117646" y="174" class="taxon-node-label extinct">Early Amniotes†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="97.19607843137256" y="221" class="taxon-node-label extinct">Sauropsida†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="97.09803921568627" y="333" class="taxon-node-label">Diapsida<tspan class="taxon-extant-dot"> ●</tspan></text><text x="135.19148936170214" y="240" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #3b82f6;">Lepidosauromorpha†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="395" y="218" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #3b82f6;">Rhynchocephalia (Tuatara)†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="275.7647058823529" y="192" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #3b82f6;">Squamata (Lizards &amp; Snakes)†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="217.61702127659572" y="352" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Archosauromorpha†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="968.2424242424242" y="326" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Crocodilia (Crocodiles)†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="274.6666666666667" y="461" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Dinosauria†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="790.0253164556962" y="414" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Tyrannosaurus rex†</text><text x="545" y="423" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Archeopteryx†</text><text x="533" y="400" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Brachiosaurus†</text><text x="530" y="467" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Stegosaurus†</text><text x="365.1764705882353" y="297" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #f59e0b;">Testudines†<tspan class="taxon-extant-dot"> ●</tspan></text><text x="798.0253164556962" y="459" class="taxon-node-label extinct lineage-tinted" style="--lineage-color: #10b981;">Neornithes (Extinct Members)†</text><text x="804.9090909090909" y="498" class="taxon-node-label lineage-tinted" style="--lineage-color: #10b981;">Neornithes (Living Members)<tspan class="taxon-extant-dot"> ●</tspan></text><text x="929.6363636363636" y="537" class="taxon-node-label lineage-tinted" style="--lineage-color: #10b981;">Aves<tspan class="taxon-extant-dot"> ●</tspan></text></g>
                     <g id="drag-snap-group"></g></svg>
                 </div>
             </div>
@@ -1014,7 +1143,7 @@
                     <button class="zoom-btn" onclick="zoomCanvas(1.25)" title="Zoom in">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
                     </button>
-                    <div class="zoom-pct-label" id="zoom-pct-label">100%</div>
+                    <div class="zoom-pct-label" id="zoom-pct-label">108%</div>
                     <button class="zoom-btn" onclick="zoomCanvas(0.8)" title="Zoom out">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
                     </button>
@@ -1079,13 +1208,42 @@
                 </div>
             </div>
 
+            <!-- ══ UNIFIED LEGEND (taxon status + lineages) — in-flow, collapsible ══ -->
+            <div id="taxon-status-legend" class="taxon-status-legend">
+                <button type="button" class="tsl-toggle" id="tsl-toggle-btn" aria-expanded="true" aria-controls="tsl-body" title="Show / hide legend" onclick="toggleTaxonLegend()">
+                    <span class="tsl-caret">▾</span><span class="tsl-title">Legend</span>
+                </button>
+                <div class="tsl-body" id="tsl-body">
+                    <div class="tsl-group">
+                        <span class="tsl-group-title">Taxon Status</span>
+                        <span class="tsl-item">
+                            <span class="tsl-mark"><i class="tsl-dot"></i></span>
+                            <span><span class="tsl-name">Green dot — Extant:</span> <span class="tsl-desc">living representatives</span></span>
+                        </span>
+                        <span class="tsl-item">
+                            <span class="tsl-mark">†</span>
+                            <span><span class="tsl-name">Inverted cross — Extinct:</span> <span class="tsl-desc">no living representatives</span></span>
+                        </span>
+                        <span class="tsl-item">
+                            <span class="tsl-mark">†<i class="tsl-dot"></i></span>
+                            <span><span class="tsl-name">Inverted cross + Green dot — Extant + Extinct:</span> <span class="tsl-desc">both living and extinct representatives</span></span>
+                        </span>
+                    </div>
+                    <span class="tsl-sep"></span>
+                    <div class="tsl-group" id="tsl-lineage-group">
+                        <span class="tsl-group-title">Lineages</span>
+                        <span class="tsl-lineage-items" id="tsl-lineage-items"><span class="tsl-lineage-item"><i class="tsl-lineage-dot" style="background:rgb(59, 130, 246)"></i>Lepidosauromorpha</span><span class="tsl-lineage-item"><i class="tsl-lineage-dot" style="background:rgb(16, 185, 129)"></i>Archosauromorpha</span><span class="tsl-lineage-item"><i class="tsl-lineage-dot" style="background:rgb(245, 158, 11)"></i>Testudines</span></span>
+                    </div>
+                </div>
+            </div>
+
             <div id="profile-view-wrapper" class="profile-card-view" style="display: none; flex-direction: column;">
                 <div class="pc-toolbar">
                     <div class="pc-toolbar-left">
                         <button class="pc-back-btn" onclick="closeProfileCard()">← BACK</button>
                         <button class="pc-edit-toggle visible" id="pc-edit-toggle-btn" onclick="toggleProfileEditMode()">EDIT</button>
                     </div>
-                    <span id="pc-toolbar-title" style="font-size:0.8rem;color:var(--text-muted);font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Dimetrodon sp. (Fossil based AI Reconstruction)</span>
+                    <span id="pc-toolbar-title" style="font-size:0.8rem;color:var(--text-muted);font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Archaeothyris sp. (Fossil based AI reconstruction)</span>
                 </div>
                 <div id="profile-card-container">
 <div class="profile-card" id="active-profile-card">
@@ -1093,12 +1251,12 @@
   <!-- HEADER -->
   <div class="pcf-header">
     <div class="pcf-header-top">
-      <input class="pc-editable pcf-name" data-field="scientificName" type="text" value="Dimetrodon sp. (Fossil based AI Reconstruction)" placeholder="Scientific name…" readonly="" disabled="" style="pointer-events: none;">
-      <div class="pc-status-pill extinct">
-             ❌ Extinct
+      <input class="pc-editable pcf-name" data-field="scientificName" type="text" value="Archaeothyris sp. (Fossil based AI reconstruction)" placeholder="Scientific name…" readonly="" disabled="" style="pointer-events: none;">
+      <div class="pc-status-pill both">
+             ❌🟢 Extant + Extinct
            </div>
     </div>
-    <input class="pc-editable pcf-subtitle" data-field="taxonomicClassification" type="text" value="Clade Synapsida, Order Pelycosauria" placeholder="Taxonomic classification…" readonly="" disabled="" style="pointer-events: none;">
+    <input class="pc-editable pcf-subtitle" data-field="taxonomicClassification" type="text" value=" Clade Synapsida" placeholder="Taxonomic classification…" readonly="" disabled="" style="pointer-events: none;">
     <div class="pc-edit-hint">✎ Click any field to edit</div>
   </div>
 
@@ -1107,10 +1265,18 @@
     <!-- IMAGE (large hero) -->
     <div class="pcf-image-block">
       <div class="pcf-img-frame has-image" onclick="">
-        <img src="https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Pelycosaurs/Dimetrodon%20sp.(Pelycosaurs).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1BlbHljb3NhdXJzL0RpbWV0cm9kb24gc3AuKFBlbHljb3NhdXJzKS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MjkxMTE0LCJleHAiOjE4MjA4MjcxMTR9.tLwOBsesOBWHGp3IauB3w0gOWTUm_7FKyPG2Ca8uUtyZLaMqQXpX01nhcGmhBH2oR6vqCPWhETOpAP3cIJDARg" data-img-url="https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Pelycosaurs/Dimetrodon%20sp.(Pelycosaurs).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1BlbHljb3NhdXJzL0RpbWV0cm9kb24gc3AuKFBlbHljb3NhdXJzKS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MjkxMTE0LCJleHAiOjE4MjA4MjcxMTR9.tLwOBsesOBWHGp3IauB3w0gOWTUm_7FKyPG2Ca8uUtyZLaMqQXpX01nhcGmhBH2oR6vqCPWhETOpAP3cIJDARg" onerror="onProfileImageError(this)">
+        <button type="button" class="pcf-info-btn" aria-label="About this image" aria-expanded="false" onclick="event.stopPropagation(); toggleProfileInfoPopover(event, this);">i</button>
+        <div class="pcf-info-popover" role="dialog" aria-modal="false" aria-label="Representative reconstruction" hidden="">
+          <button type="button" class="pcf-info-popover-close" aria-label="Close" onclick="event.stopPropagation(); closeProfileInfoPopover();">×</button>
+          <p class="pcf-info-popover-title">Representative reconstruction</p>
+          <p class="pcf-info-popover-body">This image is based on the oldest known or selected fossil record for this lineage. It is illustrative and does not represent the exact organism at the branching point or a confirmed direct ancestor.</p>
+        </div>
+        <div class="pcf-img-content">
+        <img src="https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Synapsid/Archaeothyris%20sp.(Synapsid).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1N5bmFwc2lkL0FyY2hhZW90aHlyaXMgc3AuKFN5bmFwc2lkKS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzU1MTY2LCJleHAiOjE4MjA4OTExNjZ9.XpIouc0reCzqS7rk1tt_EGhDly5JpQvoCAFKZb6k8CVuCAwc2oUdYEsNgdGWY0pgGwjw9afYmDerA2FprUh_EQ" data-img-url="https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Synapsid/Archaeothyris%20sp.(Synapsid).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1N5bmFwc2lkL0FyY2hhZW90aHlyaXMgc3AuKFN5bmFwc2lkKS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzU1MTY2LCJleHAiOjE4MjA4OTExNjZ9.XpIouc0reCzqS7rk1tt_EGhDly5JpQvoCAFKZb6k8CVuCAwc2oUdYEsNgdGWY0pgGwjw9afYmDerA2FprUh_EQ" onerror="onProfileImageError(this)">
+        </div>
       </div>
       <div class="pc-image-url-row">
-        <input class="pc-image-url-input" id="img-url-input-0" placeholder="Folder/filename.png (Supabase path)" value="https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Pelycosaurs/Dimetrodon%20sp.(Pelycosaurs).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1BlbHljb3NhdXJzL0RpbWV0cm9kb24gc3AuKFBlbHljb3NhdXJzKS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MjkxMTE0LCJleHAiOjE4MjA4MjcxMTR9.tLwOBsesOBWHGp3IauB3w0gOWTUm_7FKyPG2Ca8uUtyZLaMqQXpX01nhcGmhBH2oR6vqCPWhETOpAP3cIJDARg">
+        <input class="pc-image-url-input" id="img-url-input-0" placeholder="Folder/filename.png (Supabase path)" value="https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Synapsid/Archaeothyris%20sp.(Synapsid).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1N5bmFwc2lkL0FyY2hhZW90aHlyaXMgc3AuKFN5bmFwc2lkKS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzU1MTY2LCJleHAiOjE4MjA4OTExNjZ9.XpIouc0reCzqS7rk1tt_EGhDly5JpQvoCAFKZb6k8CVuCAwc2oUdYEsNgdGWY0pgGwjw9afYmDerA2FprUh_EQ">
         <button class="pc-image-url-btn" onclick="applyImageUrl()">SET</button>
       </div>
     </div>
@@ -1120,11 +1286,11 @@
       <div class="pcf-chrono-block">
         <div class="pcf-chrono-head">Chrono<br>Horizon</div>
         <div class="pcf-chrono-track">
-          <span class="pcf-chrono-tag" style="color:#10b981;">280 Mya</span>
+          <span class="pcf-chrono-tag" style="color:#10b981;">306 Mya</span>
           <span class="pcf-chrono-dot" style="background:#10b981;"></span>
-          <span class="pcf-chrono-line" style="background:linear-gradient(to right,#10b981,#ef4444);"></span>
-          <span class="pcf-chrono-dot" style="background:#ef4444;"></span>
-          <span class="pcf-chrono-tag" style="color:#ef4444;">252 Mya</span>
+          <span class="pcf-chrono-line" style="background:linear-gradient(to right,#10b981,#10b981);"></span>
+          <span class="pcf-chrono-dot" style="background:#10b981;"></span>
+          <span class="pcf-chrono-tag" style="color:#10b981;">Present</span>
         </div>
       </div>
 
@@ -1132,28 +1298,31 @@
       <div class="pcf-facts-row">
         <div>
           <div class="pcf-fact-label">Phylogenetic relative</div>
-          <textarea class="pc-editable pcf-fact-value" data-field="ancestor" placeholder="e.g. inferred phylogenetic relative or node name…" readonly="" disabled="" style="height: 63px; pointer-events: none;">Archaeothyris sp. (Early Synapid relative)</textarea>
+          <textarea class="pc-editable pcf-fact-value" data-field="ancestor" placeholder="e.g. inferred phylogenetic relative or node name…" readonly="" disabled="" style="height: 86px; pointer-events: none;">Hylonomus sp.
+Early Distant relative</textarea>
         </div>
         <div>
           <div class="pcf-fact-label">Diet</div>
-          <textarea class="pc-editable pcf-fact-value" data-field="diet" placeholder="e.g. Carnivore…" readonly="" disabled="" style="height: 42px; pointer-events: none;">Carnivorous apex predator</textarea>
+          <textarea class="pc-editable pcf-fact-value" data-field="diet" placeholder="e.g. Carnivore…" readonly="" disabled="" style="height: 86px; pointer-events: none;">Carnivorous, Insectivorous</textarea>
         </div>
       </div>
       <div class="pcf-facts-row">
         <div>
           <div class="pcf-fact-label">Common Name</div>
-          <textarea class="pc-editable pcf-fact-value" data-field="commonName" placeholder="e.g. Turtles…" readonly="" disabled="" style="height: 42px; pointer-events: none;">Sail-backed reptiles</textarea>
+          <textarea class="pc-editable pcf-fact-value" data-field="commonName" placeholder="e.g. Turtles…" readonly="" disabled="" style="height: 43px; pointer-events: none;">Early Synapsid</textarea>
         </div>
         <div>
           <div class="pcf-fact-label">Habitat</div>
-          <textarea class="pc-editable pcf-fact-value" data-field="habitat" placeholder="e.g. Marine, Terrestrial…" readonly="" disabled="" style="height: 42px; pointer-events: none;">Terrestrial</textarea>
+          <textarea class="pc-editable pcf-fact-value" data-field="habitat" placeholder="e.g. Marine, Terrestrial…" readonly="" disabled="" style="height: 43px; pointer-events: none;">Terrestrial
+</textarea>
         </div>
       </div>
 
       <!-- DISTINGUISHING CHARACTERS -->
       <div class="pcf-features">
         <div class="pcf-features-label">Distinguishing Characters</div>
-        <textarea class="pc-editable pcf-features-text" data-field="distinguishingFeatures" placeholder="Key morphological or behavioural features…" spellcheck="false" readonly="" disabled="" style="height: 42px; pointer-events: none;">- Large dorsal sail supported by elongated neural spines </textarea>
+        <textarea class="pc-editable pcf-features-text" data-field="distinguishingFeatures" placeholder="Key morphological or behavioural features…" spellcheck="false" readonly="" disabled="" style="height: 151px; pointer-events: none;">- One temporal opening behind each eye (Temporal fenestra).
+- Heterodont teeth indicating early trend towards all modern mammals</textarea>
       </div>
     </div>
 
@@ -1161,7 +1330,7 @@
 
 </div></div>
             </div>
-        <div id="canvas-timeline-direction" class="canvas-timeline-direction">Past  ←  time  →  Present</div><div id="canvas-lineage-legend" class="canvas-lineage-legend"><span class="legend-title">Lineages</span><span class="legend-item"><i class="legend-dot" style="background:rgb(59, 130, 246)"></i>Lepidosauromorpha</span><span class="legend-item"><i class="legend-dot" style="background:rgb(16, 185, 129)"></i>Archosauromorpha</span><span class="legend-item"><i class="legend-dot" style="background:rgb(245, 158, 11)"></i>Testudines</span><span class="legend-note">† extinct</span></div></div>
+        <div id="canvas-timeline-direction" class="canvas-timeline-direction">Past  ←  time  →  Present</div></div>
 
         <aside id="developer-panel" class="sidebar collapsed">
             <div class="panel-section">
@@ -1352,7 +1521,7 @@
           "habitat": "Terrestrial",
           "diet": "Insectivorous",
           "distinguishingFeatures": "- First vertebrates with amniotic egg \n- Reproduction independent of water\n- Water independent reproduction",
-          "status": "extinct",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Early%20Amniotes/Hylonomus%20lyelli.V.png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L0Vhcmx5IEFtbmlvdGVzL0h5bG9ub211cyBseWVsbGkuVi5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MTMxNDM1LCJleHAiOjE4MjA2Njc0MzV9.eaw6wqncb0A-EOR48S7Y9NchiLWWVu7MQPfB5C3Xw1CI5culwkiAjanR8Ynu2svha1svHjzQdVS2sL7RC6yhTw"
@@ -1367,7 +1536,7 @@
         "mya": 315,
         "x": null,
         "y": 228,
-        "extinct": false,
+        "extinct": true,
         "labelYOffset": -11,
         "labelXOffset": -5,
         "profile": {
@@ -1378,7 +1547,7 @@
           "habitat": "Terrestrial.",
           "diet": "Carnivorous",
           "distinguishingFeatures": "- Body covered with scales \n- Compact skull\n- Shelled Eggs laid on Land \n",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Sauropsida/Captorhinus%20aguti.v.png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1NhdXJvcHNpZGEvQ2FwdG9yaGludXMgYWd1dGkudi5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzQ3MTYzLCJleHAiOjE4MjA4ODMxNjN9.dRVsPDTPBHEHw3pSmv_6AN2yWCkGiGn0GS3fNaCxqlIcZ2x2Nay79lLOb6ZyixXEWFnpvH6qRS7w64YllFtlBw"
@@ -1397,7 +1566,7 @@
         "labelYOffset": 19,
         "labelXOffset": -20,
         "profile": {
-          "scientificName": "Petrolaceosaurus sp. (Fossil ",
+          "scientificName": "Petrolaceosaurus sp. (Fossil based AI Reconstruction) ",
           "commonName": "Early Diapsid",
           "taxonomicClassification": "Clade: Diapsida ",
           "geologicalAge": "307 MYA",
@@ -1419,7 +1588,7 @@
         "mya": 295,
         "x": null,
         "y": 251,
-        "extinct": false,
+        "extinct": true,
         "labelYOffset": -15,
         "labelXOffset": -6,
         "profile": {
@@ -1430,7 +1599,7 @@
           "habitat": "Terrestrial, Semi-aquatic, Marine",
           "diet": "\nInsectivore,",
           "distinguishingFeatures": "- Skin shed periodically in pieces (ecdysis/moulting)\n- Teeth loosely attached to inner jaw surface (pleurodont)\n- Includes all lizards, snakes and tuatara",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Lepidosauromorpha/Lepidosauromorpha.V.png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L0xlcGlkb3NhdXJvbW9ycGhhL0xlcGlkb3NhdXJvbW9ycGhhLlYucG5nIiwic2NvcGUiOiJkb3dubG9hZCIsImlhdCI6MTc4OTI5MTU4MSwiZXhwIjoxODIwODI3NTgxfQ.EMF2JjF8-HQYyf5--OYT62yf-SW1LxdTTDr7cshN2uQmX1VkmJSZwSIGrHvx4KA8321MnTh6RuHSo43UjVHbjw"
@@ -1445,7 +1614,7 @@
         "mya": 200,
         "x": null,
         "y": 214,
-        "extinct": false,
+        "extinct": true,
         "labelYOffset": 0,
         "labelXOffset": 0,
         "profile": {
@@ -1456,7 +1625,7 @@
           "habitat": "Terrestrial,Burrowing",
           "diet": "Insectivorous Carnivorous ",
           "distinguishingFeatures": "- Prominent spiny crest along head, neck and back\n- Large, rounded head with beak-like snout\n- Robust lizard-like body with granular scales and olive-green colouration",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Tuatara/Tuatara.png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1R1YXRhcmEvVHVhdGFyYS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzIxMDY1LCJleHAiOjE4MjA4NTcwNjV9.LJR9gOHPeCZikShnheOmwKr8b58RfPDPHcl-IrgicrkT55S3oZaDv-1zRDAiNtL8P5tn7pUeCFSK9uRnud0uaw"
@@ -1471,7 +1640,7 @@
         "mya": 240,
         "x": null,
         "y": 188,
-        "extinct": false,
+        "extinct": true,
         "labelYOffset": 0,
         "labelXOffset": 0,
         "profile": {
@@ -1482,7 +1651,7 @@
           "habitat": "Terrestrial, Arboreal, Aquatic, Marine",
           "diet": "Carnivorous Insectivorous ",
           "distinguishingFeatures": "- Movable quadrate bone allowing wide jaw opening\n- Body covered in overlapping keratinous scales\n- Largest living reptile order over 11,000 species",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Squamata/Eophis%20Woodi.png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1NxdWFtYXRhL0VvcGhpcyBXb29kaS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzIxMTEyLCJleHAiOjE4MjA4NTcxMTJ9.cTu95myEoJDqLxYPrfHZ40VweWAJR22mll-4NbOsxwRWKAsW374aKlAW2RW26CVsY7nrl5sXP-c_ZKuH0ADrFw"
@@ -1496,19 +1665,19 @@
         "label": "Archosauromorpha",
         "mya": 260,
         "x": null,
-        "y": 370,
-        "extinct": false,
-        "labelYOffset": 15,
-        "labelXOffset": -40,
+        "y": 363,
+        "extinct": true,
+        "labelYOffset": -15,
+        "labelXOffset": -4,
         "profile": {
-          "scientificName": "Proterosuchus sp.",
+          "scientificName": "Euparkeria sp.",
           "commonName": "Archosaur like reptiles",
           "taxonomicClassification": "Clade: Archosauromorpha",
           "geologicalAge": "260 MYA",
           "habitat": " Terrestrial, Aquatic",
           "diet": "Carnivorous, Herbivorous",
           "distinguishingFeatures": "- Elongated, crocodile-like snout\n- Sharp, recurved teeth\n- Strong limbs and long tail",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Archosauromorpha/Archosauromorph.png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L0FyY2hvc2F1cm9tb3JwaGEvQXJjaG9zYXVyb21vcnBoLnBuZyIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3ODkzMjE0MDMsImV4cCI6MTgyMDg1NzQwM30.9sKp0regvFiDyDCYJ4qpwcWE6pXBvsXQlPh5d30eW8StG5PH_bFtK3uqpFPqCje8bhKeQDZU-U88yhEAYz-AXg"
@@ -1522,24 +1691,25 @@
         "label": "Crocodilia (Crocodiles)",
         "mya": 8,
         "x": null,
-        "y": 368,
-        "extinct": false,
+        "y": 322,
+        "extinct": true,
         "labelYOffset": 0,
         "labelXOffset": 0,
         "profile": {
-          "scientificName": "Protosuchus sp.",
-          "commonName": "Crocodiles, Alligators, Ghariyals",
-          "taxonomicClassification": "Clade Archosauria, Order Crocodilia",
+          "scientificName": "Proterosuchus sp. (Fossil based AI Reconstruction)",
+          "commonName": "Crocodiles,\nAlligators.",
+          "taxonomicClassification": "Clade: Archosauria, Order: Crocodilia",
           "geologicalAge": "8 MYA",
-          "habitat": "Semi-aquatic, Freshwater, Coastal Marine",
-          "diet": "Carnivore (ambush predator)",
-          "distinguishingFeatures": "- Heavy body armour with bony osteoderms (scutes)\n- Flattened tail for powerful swimming\n- Palatal valve allows breathing with mouth open underwater",
-          "status": "living",
+          "habitat": "Freshwater, \nCoastal Marine",
+          "diet": "Carnivore \n(Ambush Predator)",
+          "distinguishingFeatures": "- Heavy body armour with bony plates\n- Flattened tail for powerful swimming\n- Specialised valve allows breathing while submerged.",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Reptilia/Protosuchus%20sp.(Reptilia).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1JlcHRpbGlhL1Byb3Rvc3VjaHVzIHNwLihSZXB0aWxpYSkucG5nIiwic2NvcGUiOiJkb3dubG9hZCIsImlhdCI6MTc4OTM1MjAyNCwiZXhwIjoxODIwODg4MDI0fQ.V5GTN-6XF96ZO7b9WnFZHMK3YBgK75jBZq5_26eK9hy_FrI1-QgRvZh9-iJJMMlWHuVdTI0xZAb1XcCem_y1qQ"
           ],
-          "extinctionMya": 0
+          "extinctionMya": 0,
+          "ancestor": "Euparkeria sp.\n(Distant relative)"
         }
       },
       {
@@ -1559,7 +1729,7 @@
           "habitat": "Terrestrial",
           "diet": "Carnivorous, Herbivorous,\nOmnivorous",
           "distinguishingFeatures": "- Upright stance with limbs directly under the body\n- Strong hind limbs\n- Long, muscular tail",
-          "status": "extinct",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Dinosauria/Dinosauria.V.png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L0Rpbm9zYXVyaWEvRGlub3NhdXJpYS5WLnBuZyIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3ODkyOTE3NjIsImV4cCI6MTgyMDgyNzc2Mn0.WKUZzZYpVbOxLnA3lmO1li63kkFngyYxUmlwReUh8xi4vpffaYcV4EMZrbXarp8Y4dD4w0-NeDxFuUexvODRmA"
@@ -1573,7 +1743,7 @@
         "label": "Tyrannosaurus rex †",
         "mya": 68,
         "x": null,
-        "y": 378,
+        "y": 410,
         "extinct": true,
         "labelYOffset": 0,
         "labelXOffset": 0,
@@ -1601,7 +1771,7 @@
         "x": null,
         "y": 422,
         "extinct": true,
-        "labelYOffset": 0,
+        "labelYOffset": -3,
         "labelXOffset": 0,
         "profile": {
           "scientificName": "Archaeopteryx sp. (Fossil based AI Reconstruction)",
@@ -1678,7 +1848,7 @@
         "mya": 210,
         "x": null,
         "y": 293,
-        "extinct": false,
+        "extinct": true,
         "labelYOffset": 0,
         "labelXOffset": 0,
         "profile": {
@@ -1689,7 +1859,7 @@
           "habitat": "Terrestrial, Aquatic ",
           "diet": "Herbivorous, Omnivorous ",
           "distinguishingFeatures": "- Hard shell covering Body\n- Toothless Jaws with Horny Beaks\n- Limbs for walking, swimming",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Testudines/Proganochelys%20sp.(Testudines).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1Rlc3R1ZGluZXMvUHJvZ2Fub2NoZWx5cyBzcC4oVGVzdHVkaW5lcykucG5nIiwic2NvcGUiOiJkb3dubG9hZCIsImlhdCI6MTc4OTM1NDY5NCwiZXhwIjoxODIwODkwNjk0fQ.BYcbVkCBgwCYiqWSv_KhpoRu389m2pKgxttb24aU24aghJFiKKONJLXw7p-Fua3rNZLpbXKz_0C1QfvR5t5n_Q"
@@ -1755,7 +1925,7 @@
         "label": "Aves",
         "mya": 21,
         "x": null,
-        "y": 529,
+        "y": 533,
         "extinct": false,
         "labelYOffset": 0,
         "labelXOffset": 0,
@@ -1932,7 +2102,7 @@
           "habitat": "Terrestrial",
           "diet": "Insectivorous  ",
           "distinguishingFeatures": "- First Amniote with amniotic egg\n- Water Independent reproduction\n- Water proof skin.",
-          "status": "extinct",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Early%20Amniotes/Hylonomus%20lyelli.V.png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L0Vhcmx5IEFtbmlvdGVzL0h5bG9ub211cyBseWVsbGkuVi5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzUyNDY5LCJleHAiOjE4MjA4ODg0Njl9.PPgOVj7kJ_HDWqwyjt79Kus0M6TQ0yUfyJOCuy5rQef_fpRokDxQI7emolXMD0I_MzH--JNx1Su-3rh4Q-VEjA"
@@ -1947,7 +2117,7 @@
         "mya": 306,
         "x": null,
         "y": 239,
-        "extinct": false,
+        "extinct": true,
         "labelYOffset": 20,
         "labelXOffset": -20,
         "profile": {
@@ -1958,7 +2128,7 @@
           "habitat": "Terrestrial\n",
           "diet": "Carnivorous, Insectivorous",
           "distinguishingFeatures": "- One temporal opening behind each eye (Temporal fenestra).\n- Heterodont teeth indicating early trend towards all modern mammals",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Synapsid/Archaeothyris%20sp.(Synapsid).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1N5bmFwc2lkL0FyY2hhZW90aHlyaXMgc3AuKFN5bmFwc2lkKS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzU1MTY2LCJleHAiOjE4MjA4OTExNjZ9.XpIouc0reCzqS7rk1tt_EGhDly5JpQvoCAFKZb6k8CVuCAwc2oUdYEsNgdGWY0pgGwjw9afYmDerA2FprUh_EQ"
@@ -2010,7 +2180,7 @@
           "habitat": "Terrestrial",
           "diet": "Herbivore, Carnivore",
           "distinguishingFeatures": "- Upright limb posture than pelycosaurs \n- Enlarged temporal fenestra for stronger jaw muscles.",
-          "status": "extinct",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Therapsid/Inostrancevia.sp%20(Therapsid).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1RoZXJhcHNpZC9Jbm9zdHJhbmNldmlhLnNwIChUaGVyYXBzaWQpLnBuZyIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3ODkyOTEwNTIsImV4cCI6MTgyMDgyNzA1Mn0.sMLAksNHng5wC1SlEGEy5755bKwM4InD40ZnKyS4O4N3nh7WmeALbW9rk5NR56BV8sXcAM45NsCgvUHIjAwHlA"
@@ -2036,7 +2206,7 @@
           "habitat": "Terrestrial",
           "diet": "Carnivorous ",
           "distinguishingFeatures": "- Differentiated teeth:  Incisors, Canines and Postcanines. \n- Secondary bony palate allowing breathing while eating.           ",
-          "status": "extinct",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Cynodontia/Cynognathus%20sp.(%20Cynodont).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L0N5bm9kb250aWEvQ3lub2duYXRodXMgc3AuKCBDeW5vZG9udCkucG5nIiwic2NvcGUiOiJkb3dubG9hZCIsImlhdCI6MTc4OTI5MDk5OCwiZXhwIjoxODIwODI2OTk4fQ.iLwOouB98RyunA1eN7F9etFS6NVUpaeGtD_8F80SukMbv9EmJknEq-WNJUP9wPQZ2Zzi-mYtdS6gLtpWJKT0Kw"
@@ -2062,7 +2232,7 @@
           "habitat": "Terrestrial",
           "diet": "Insectivorous ",
           "distinguishingFeatures": "- Mammals like Jaw joint\n- Diphyodont teeth (Milk, Permanent teeth)",
-          "status": "extinct",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Mammalioformes/Morganucodon%20sp.(Mammsliaformia).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L01hbW1hbGlvZm9ybWVzL01vcmdhbnVjb2RvbiBzcC4oTWFtbXNsaWFmb3JtaWEpLnBuZyIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3ODkyOTA5NDYsImV4cCI6MTgyMDgyNjk0Nn0.3ZhaJATtfqth8uWyVc0zOj8g2aVijJ-x07UQqD5Ij3TIzigsN6W0DTlKYrBomMQa0AKR4zQDBjirkTiIKvqKxw"
@@ -2077,7 +2247,7 @@
         "mya": 190,
         "x": null,
         "y": 407,
-        "extinct": false,
+        "extinct": true,
         "labelYOffset": 16,
         "labelXOffset": -19,
         "profile": {
@@ -2088,7 +2258,7 @@
           "habitat": "Terrestrial, Aquatic ",
           "diet": "Omnivorous",
           "distinguishingFeatures": "- Three Middle earbones (Maleus, Incus, Stapes)",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Mammalia%20(Hypo.%20Ancestor)/Hypo%20Ancestor%20(Mammals).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L01hbW1hbGlhIChIeXBvLiBBbmNlc3RvcikvSHlwbyBBbmNlc3RvciAoTWFtbWFscykucG5nIiwic2NvcGUiOiJkb3dubG9hZCIsImlhdCI6MTc4OTI5MDgxNywiZXhwIjoxODIwODI2ODE3fQ.7r1u-VFYCuPoa2LRBAEaeHeS4tYbxv1jnAcJbKpVAAwmNGx8yB_AFC1kCHXx0WZVbPChqI5ecP1YpqQ6MtoT7g"
@@ -2102,7 +2272,7 @@
         "label": "Monotremata",
         "mya": 170,
         "x": null,
-        "y": 198,
+        "y": 376,
         "extinct": false,
         "labelYOffset": 0,
         "labelXOffset": 0,
@@ -2129,7 +2299,7 @@
         "mya": 83,
         "x": null,
         "y": 374,
-        "extinct": false,
+        "extinct": true,
         "labelYOffset": 0,
         "labelXOffset": 0,
         "profile": {
@@ -2140,7 +2310,7 @@
           "habitat": "Terrestrial",
           "diet": "Insectivorous ",
           "distinguishingFeatures": "- Small Body SIze with snout \n- Major diverse group",
-          "status": "living",
+          "status": "extant_extinct",
           "emoji": "🦎",
           "images": [
             "https://vsoocgchutrhxivzjvvt.supabase.co/storage/v1/object/sign/Evo-Gen%20Kodex/Placential/Sorax.sp.(Placentalia).png?token=eyJraWQiOiI3MmFmNDNhNC1jNDllLTRhZDctYjFjMi1mMjU2NjBiYWNkYWUiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJFdm8tR2VuIEtvZGV4L1BsYWNlbnRpYWwvU29yYXguc3AuKFBsYWNlbnRhbGlhKS5wbmciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg5MzUyNjI5LCJleHAiOjE4MjA4ODg2Mjl9.NxyqKsIMK1wGqEP1G0jUixu9xsizRuFnH4sDzSkfCBAQqAg949PRSgP-GO8py7y37VrMGLzezquOPVSlfVedag"
@@ -2436,6 +2606,7 @@
 
         // Legacy alias — keeps any other references working
         function switchLineageTab(targetClade) {
+            closeProfileInfoPopover();
             currentCladeId = targetClade; localSelectedNodeId = null;
             // Clear profile state so isProfileViewActive() doesn't return stale true
             profileEditMode = false;
@@ -2607,13 +2778,22 @@
             });
 
             activeDataset.nodes.forEach(node => {
+                // Authoritative extinction source: the profile card's status field
+                // (not the legacy node.extinct flag, which can drift out of sync).
+                // Works identically for both Sauropsida and Synapsida since it
+                // reads from each node's own profile.
+                // Three-state Taxon Status: 'living' | 'extinct' | 'extant_extinct'
+                const profileStatus = (node.profile && node.profile.status) ? node.profile.status : '';
+                const profileIsExtinct = (profileStatus === 'extinct' || profileStatus === 'extant_extinct');
+                const profileHasExtant = (profileStatus === 'living' || profileStatus === 'extant_extinct');
+
                 const cx = resolveNodeXCoordinate(node, activeDataset);
                 const circle = document.createElementNS(ns, "circle");
                 circle.setAttribute("cx", cx); circle.setAttribute("cy", node.y);
                 circle.setAttribute("r", node.isRoot ? "7" : "5.5");
                 let cls = "cladogram-node";
                 if (node.isRoot) cls += " root-node";
-                if (node.extinct) cls += " extinct-node";
+                if (profileIsExtinct) cls += " extinct-node";
                 if (localSelectedNodeId === node.id) cls += " selected";
                 if (isTrackingEffective && !ancestorNodes.has(node.id)) cls += " faded-element";
 
@@ -2650,7 +2830,7 @@
                 const text = document.createElementNS(ns, "text");
                 text.setAttribute("x", cx + 12 + (node.labelXOffset || 0));
                 text.setAttribute("y", node.y + 4 + (node.labelYOffset || 0));
-                let lcls = `taxon-node-label${node.extinct ? ' extinct' : ''}`;
+                let lcls = `taxon-node-label${profileIsExtinct ? ' extinct' : ''}`;
                 if (isTrackingEffective && !ancestorNodes.has(node.id)) lcls += " faded-element";
                 if (lineageColorOn && nodeBranchId && !node.isRoot && !isTrackingEffective) {
                     lcls += " lineage-tinted";
@@ -2658,7 +2838,23 @@
                     if (isolatedBranch && nodeBranchId !== isolatedBranch) lcls += " faded-element";
                 }
                 text.setAttribute("class", lcls);
-                text.textContent = node.label;
+                // Strip any pre-existing trailing dagger(s) from the stored label,
+                // then append exactly one iff the profile status is extinct.
+                // node.label itself is never mutated — this is display-only.
+                const plainLabel = String(node.label || '')
+                    .replace(/\s*\u2020+\s*$/u, '')
+                    .trim();
+                text.textContent = profileIsExtinct
+                    ? `${plainLabel}\u2020`
+                    : plainLabel;
+                // Extant indicator: small green dot, rendered beside the dagger
+                // when the status is 'extant_extinct', on its own when 'living'.
+                if (profileHasExtant) {
+                    const extantDot = document.createElementNS(ns, "tspan");
+                    extantDot.setAttribute("class", "taxon-extant-dot");
+                    extantDot.textContent = " \u25CF";
+                    text.appendChild(extantDot);
+                }
                 labelsGroup.appendChild(text);
             });
 
@@ -2892,13 +3088,113 @@
         // Shown when an <img> fails to load — instead of silently swapping to
         // the emoji with no trace, this surfaces the exact URL that failed
         // (tap to copy/inspect) and lets you retry without re-typing the path.
+        // ── Profile-card image info popover ("Representative reconstruction") ──
+        // Only one popover instance is ever open at a time; state is centralized
+        // here so switching cards, toggling the button, or any close path
+        // always leaves things in a clean, listener-free state.
+        let profileInfoPopoverState = null;
+
+        function bindProfileInfoPopover(root) {
+            if (!root) return;
+            const btn = root.querySelector('.pcf-info-btn');
+            const popover = root.querySelector('.pcf-info-popover');
+            if (!btn || !popover) return;
+
+            // Note: the button's toggle and the close-button's click are wired
+            // via inline onclick="" in the renderProfileCard() template (same
+            // convention as the rest of this file's dynamically-built markup).
+            // Only bind here what that markup doesn't already cover.
+
+            // Clicks inside the popover itself should never bubble to the
+            // document-level "click outside" handler.
+            popover.addEventListener('click', function(e) { e.stopPropagation(); });
+
+            // Desktop: pause the auto-close timer while hovered, resume on leave.
+            popover.addEventListener('mouseenter', function() {
+                const st = profileInfoPopoverState;
+                if (st && st.popover === popover && st.timerId) {
+                    clearTimeout(st.timerId);
+                    st.timerId = null;
+                    st.remainingMs -= (Date.now() - st.startedAt);
+                    if (st.remainingMs < 0) st.remainingMs = 0;
+                }
+            });
+            popover.addEventListener('mouseleave', function() {
+                const st = profileInfoPopoverState;
+                if (st && st.popover === popover && !st.timerId) {
+                    startProfileInfoTimer(st.remainingMs > 0 ? st.remainingMs : 15000);
+                }
+            });
+        }
+
+        function startProfileInfoTimer(ms) {
+            if (!profileInfoPopoverState) return;
+            profileInfoPopoverState.startedAt = Date.now();
+            profileInfoPopoverState.remainingMs = ms;
+            profileInfoPopoverState.timerId = setTimeout(closeProfileInfoPopover, ms);
+        }
+
+        function openProfileInfoPopover(btn, popover) {
+            // Only one open at a time — close any previous instance first
+            // (also covers re-opening the same popover after it was closed).
+            closeProfileInfoPopover();
+
+            popover.hidden = false;
+            btn.setAttribute('aria-expanded', 'true');
+
+            const docClickHandler = function(e) {
+                if (popover.contains(e.target) || e.target === btn) return;
+                closeProfileInfoPopover();
+            };
+            const escHandler = function(e) {
+                if (e.key === 'Escape') closeProfileInfoPopover();
+            };
+            // Capture phase so this reliably sees the click before other
+            // handlers (e.g. the image frame's onclick) can stop propagation.
+            document.addEventListener('click', docClickHandler, true);
+            document.addEventListener('keydown', escHandler, true);
+
+            profileInfoPopoverState = {
+                btn, popover, docClickHandler, escHandler,
+                timerId: null, remainingMs: 15000, startedAt: Date.now()
+            };
+            startProfileInfoTimer(15000);
+        }
+
+        function closeProfileInfoPopover() {
+            if (!profileInfoPopoverState) return;
+            const { btn, popover, timerId, docClickHandler, escHandler } = profileInfoPopoverState;
+            if (timerId) clearTimeout(timerId);
+            document.removeEventListener('click', docClickHandler, true);
+            document.removeEventListener('keydown', escHandler, true);
+            popover.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+            profileInfoPopoverState = null;
+        }
+
+        function toggleProfileInfoPopover(event, btn) {
+            const popover = btn.nextElementSibling && btn.nextElementSibling.classList.contains('pcf-info-popover')
+                ? btn.nextElementSibling
+                : btn.closest('.pcf-img-frame').querySelector('.pcf-info-popover');
+            if (!popover) return;
+            if (profileInfoPopoverState && profileInfoPopoverState.popover === popover) {
+                closeProfileInfoPopover();
+            } else {
+                openProfileInfoPopover(btn, popover);
+            }
+        }
+
         function onProfileImageError(imgEl) {
             const url = imgEl.dataset.imgUrl || '';
             const frame = imgEl.closest('.pcf-img-frame');
             if (!frame) return;
+            // Replace only the image content — never the frame itself, so the
+            // info button/popover (siblings of .pcf-img-content) survive a
+            // failed image load.
+            const content = frame.querySelector('.pcf-img-content') || frame;
             const node = getProfileNode();
             const emoji = (node && node.profile && node.profile.emoji) || '\u{1F98E}';
-            frame.innerHTML = `
+            content.innerHTML = `
                 <div class="pcf-img-error">
                     <div class="pcf-img-error-emoji">${emoji}</div>
                     <div class="pcf-img-error-msg">Image failed to load</div>
@@ -2909,6 +3205,11 @@
         }
 
         function renderProfileCard(nodeId, clade) {
+            // Rebuilding the card discards the old DOM (and its popover), so
+            // detach any lingering document-level listeners/timers first —
+            // otherwise switching organisms would leak a stale handler.
+            closeProfileInfoPopover();
+
             activeProfileNodeId = nodeId;
             activeProfileClade = clade;
 
@@ -2936,13 +3237,18 @@
             Object.keys(pDef).forEach(k => { if (!(k in node.profile)) node.profile[k] = pDef[k]; });
 
             const p = node.profile;
-            const isExtinct = p.status === 'extinct';
+            const statusValue = (p.status === 'extinct' || p.status === 'extant_extinct') ? p.status : 'living';
+            const isExtinct = (statusValue === 'extinct' || statusValue === 'extant_extinct');
+            // Chrono Horizon endpoint: only a purely-extinct taxon terminates at an
+            // extinction date. 'living' and 'extant_extinct' both continue to the
+            // present, so neither shows/requires the extinction-year field.
+            const requiresExtinctionYear = (statusValue === 'extinct');
             const acNode = getAncestorNode(nodeId, clade);
             const acP = acNode ? (acNode.profile || {}) : {};
 
             const mainImg = (p.images && p.images[0]) ? p.images[0] : null;
             const mainImgSrc = buildImageUrl(mainImg);
-            const endColor = isExtinct ? '#ef4444' : '#10b981';
+            const endColor = requiresExtinctionYear ? '#ef4444' : '#10b981';
 
             const html = `
 <div class="profile-card${profileEditMode ? ' pc-editing' : ''}" id="active-profile-card">
@@ -2954,11 +3260,12 @@
         value="${escHtml(p.scientificName)}" placeholder="Scientific name…">
       ${profileEditMode
         ? `<div class="pcf-status-toggle">
-             <button type="button" class="pcf-status-opt living${!isExtinct ? ' active' : ''}" onclick="setProfileStatus('living')">&#128994; Living</button>
-             <button type="button" class="pcf-status-opt extinct${isExtinct ? ' active' : ''}" onclick="setProfileStatus('extinct')">&#10060; Extinct</button>
+             <button type="button" class="pcf-status-opt living${statusValue === 'living' ? ' active' : ''}" title="Extant" onclick="setProfileStatus('living')">&#128994; Extant</button>
+             <button type="button" class="pcf-status-opt extinct${statusValue === 'extinct' ? ' active' : ''}" title="Extinct" onclick="setProfileStatus('extinct')">&#10060; Extinct</button>
+             <button type="button" class="pcf-status-opt both${statusValue === 'extant_extinct' ? ' active' : ''}" title="Extant + Extinct" onclick="setProfileStatus('extant_extinct')">&#10060;&#128994; Both</button>
            </div>`
-        : `<div class="pc-status-pill ${isExtinct ? 'extinct' : 'living'}">
-             ${isExtinct ? '&#10060; Extinct' : '&#128994; Living'}
+        : `<div class="pc-status-pill ${statusValue === 'extant_extinct' ? 'both' : (isExtinct ? 'extinct' : 'living')}">
+             ${statusValue === 'extant_extinct' ? '&#10060;&#128994; Extant + Extinct' : (isExtinct ? '&#10060; Extinct' : '&#128994; Extant')}
            </div>`}
     </div>
     <input class="pc-editable pcf-subtitle" data-field="taxonomicClassification" type="text"
@@ -2972,9 +3279,17 @@
     <div class="pcf-image-block">
       <div class="pcf-img-frame${profileEditMode ? ' editable' : ''}${mainImgSrc ? ' has-image' : ''}"
            onclick="${profileEditMode ? 'document.getElementById(\'img-url-input-0\').focus()' : ''}">
+        <button type="button" class="pcf-info-btn" aria-label="About this image" aria-expanded="false" onclick="event.stopPropagation(); toggleProfileInfoPopover(event, this);">i</button>
+        <div class="pcf-info-popover" role="dialog" aria-modal="false" aria-label="Representative reconstruction" hidden>
+          <button type="button" class="pcf-info-popover-close" aria-label="Close" onclick="event.stopPropagation(); closeProfileInfoPopover();">&times;</button>
+          <p class="pcf-info-popover-title">Representative reconstruction</p>
+          <p class="pcf-info-popover-body">This image is based on the oldest known or selected fossil record for this lineage. It is illustrative and does not represent the exact organism at the branching point or a confirmed direct ancestor.</p>
+        </div>
+        <div class="pcf-img-content">
         ${mainImgSrc
           ? `<img src="${escHtml(mainImgSrc)}" data-img-url="${escHtml(mainImgSrc)}" onerror="onProfileImageError(this)">`
           : `<div class="pcf-img-empty"><div class="pcf-img-empty-emoji">${escHtml(p.emoji || '\u{1F98E}')}</div><div class="pcf-img-empty-caption">No image set</div></div>`}
+        </div>
       </div>
       <div class="pc-image-url-row">
         <input class="pc-image-url-input" id="img-url-input-0"
@@ -2996,7 +3311,7 @@
           <span class="pcf-chrono-dot" style="background:#10b981;"></span>
           <span class="pcf-chrono-line" style="background:linear-gradient(to right,#10b981,${endColor});"></span>
           <span class="pcf-chrono-dot" style="background:${endColor};"></span>
-          ${isExtinct
+          ${requiresExtinctionYear
             ? (profileEditMode
                 ? `<input class="pcf-chrono-input" type="number" min="0" step="1" inputmode="numeric"
                      value="${p.extinctionMya || 0}" style="color:${endColor};"
@@ -3044,6 +3359,9 @@
             document.getElementById('profile-card-container').innerHTML = html;
             document.getElementById('pc-toolbar-title').textContent =
                 p.scientificName || node.label.replace(' \u2020','');
+
+            // Wire the image-info button/popover for this freshly rendered card
+            bindProfileInfoPopover(document.getElementById('active-profile-card'));
 
             // Edit toggle visibility driven by Dev Mode
             const editToggle = document.getElementById('pc-edit-toggle-btn');
@@ -3103,7 +3421,7 @@
             if (masterNode) masterNode.profile[field] = e.target.value;
         }
 
-        // Living/Extinct two-option toggle — keeps node.extinct (used by the
+        // Extant / Extinct / Extant+Extinct toggle — keeps node.extinct (used by the
         // cladogram canvas for node color/label styling) in sync with the
         // profile's status field.
         function setProfileStatus(newStatus) {
@@ -3112,7 +3430,7 @@
             if (node.profile.status === newStatus) return;
             pushUndoSnapshot('Status: ' + node.id);
             node.profile.status = newStatus;
-            node.extinct = (newStatus === 'extinct');
+            node.extinct = (newStatus === 'extinct' || newStatus === 'extant_extinct');
             const masterNode = masterBackingData[activeProfileClade].nodes.find(n => n.id === activeProfileNodeId);
             if (masterNode) { masterNode.profile.status = newStatus; masterNode.extinct = node.extinct; }
             renderProfileCard(activeProfileNodeId, activeProfileClade);
@@ -3401,9 +3719,20 @@
         let navControlsVisible = false;
 
         function applyControlsRowVisibility() {
+            const statusLegend = document.getElementById('taxon-status-legend');
+            if (statusLegend) statusLegend.classList.toggle('hidden', isProfileViewActive());
             const controlsRow = document.getElementById('controls-row');
             if (!controlsRow) return;
             controlsRow.classList.toggle('hidden', isProfileViewActive() || !navControlsVisible);
+        }
+
+        // Unified legend (taxon status + lineages) — collapse / expand
+        function toggleTaxonLegend() {
+            const legend = document.getElementById('taxon-status-legend');
+            if (!legend) return;
+            const isCollapsed = legend.classList.toggle('collapsed');
+            const btn = document.getElementById('tsl-toggle-btn');
+            if (btn) btn.setAttribute('aria-expanded', String(!isCollapsed));
         }
 
         function toggleNavControls() {
@@ -4272,6 +4601,6 @@
 
 <script>
 /* Non-invasive display helpers. */
-(function(){function ensure(){const c=document.querySelector('.canvas-container');if(!c)return;if(!document.getElementById('canvas-timeline-direction')){const d=document.createElement('div');d.id='canvas-timeline-direction';d.className='canvas-timeline-direction';d.textContent='Past  ←  time  →  Present';c.appendChild(d)}if(!document.getElementById('canvas-lineage-legend')){const l=document.createElement('div');l.id='canvas-lineage-legend';l.className='canvas-lineage-legend';c.appendChild(l)}}function refresh(){ensure();const t=document.getElementById('canvas-lineage-legend'),s=document.querySelectorAll('#lineage-legend .lineage-legend-item');if(!t)return;const e=Array.from(s).map(i=>{const d=i.querySelector('.lineage-legend-dot'),col=d?getComputedStyle(d).backgroundColor:'#64748b';return '<span class="legend-item"><i class="legend-dot" style="background:'+col+'"></i>'+i.textContent.trim()+'</span>'});t.innerHTML=e.length?'<span class="legend-title">Lineages</span>'+e.join('')+'<span class="legend-note">† extinct</span>':'<span class="legend-note">† marks extinct taxa</span>';document.querySelectorAll('#profile-card-container textarea.pcf-fact-value,#profile-card-container textarea.pcf-features-text').forEach(x=>{if(!x.value.trim()&&x.dataset.field!=='ancestor')x.placeholder='Not added yet'});const labs=document.querySelectorAll('#labels-group .taxon-node-label');document.querySelectorAll('#nodes-group .cladogram-node').forEach((n,i)=>{const label=labs[i]?labs[i].textContent.trim():'Taxon';n.setAttribute('aria-label',label+'. Open profile card.');if(!n.querySelector('title')){const x=document.createElementNS('http://www.w3.org/2000/svg','title');x.textContent=label+' — open profile card';n.appendChild(x)}})}document.addEventListener('DOMContentLoaded',()=>{refresh();new MutationObserver(()=>requestAnimationFrame(refresh)).observe(document.body,{childList:true,subtree:true})})})();
+(function(){function ensure(){const c=document.querySelector('.canvas-container');if(!c)return;if(!document.getElementById('canvas-timeline-direction')){const d=document.createElement('div');d.id='canvas-timeline-direction';d.className='canvas-timeline-direction';d.textContent='Past  ←  time  →  Present';c.appendChild(d)}}function refresh(){ensure();const t=document.getElementById('tsl-lineage-items'),g=document.getElementById('tsl-lineage-group'),s=document.querySelectorAll('#lineage-legend .lineage-legend-item');if(t){const e=Array.from(s).map(i=>{const d=i.querySelector('.lineage-legend-dot'),col=d?getComputedStyle(d).backgroundColor:'#64748b';return '<span class="tsl-lineage-item"><i class="tsl-lineage-dot" style="background:'+col+'"></i>'+i.textContent.trim()+'</span>'}).join('');if(t.innerHTML!==e)t.innerHTML=e;if(g){g.style.display=e?'':'none';const sep=g.previousElementSibling;if(sep&&sep.classList.contains('tsl-sep'))sep.style.display=e?'':'none'}}document.querySelectorAll('#profile-card-container textarea.pcf-fact-value,#profile-card-container textarea.pcf-features-text').forEach(x=>{if(!x.value.trim()&&x.dataset.field!=='ancestor')x.placeholder='Not added yet'});const labs=document.querySelectorAll('#labels-group .taxon-node-label');document.querySelectorAll('#nodes-group .cladogram-node').forEach((n,i)=>{const label=labs[i]?labs[i].textContent.trim():'Taxon';n.setAttribute('aria-label',label+'. Open profile card.');if(!n.querySelector('title')){const x=document.createElementNS('http://www.w3.org/2000/svg','title');x.textContent=label+' — open profile card';n.appendChild(x)}})}document.addEventListener('DOMContentLoaded',()=>{refresh();new MutationObserver(()=>requestAnimationFrame(refresh)).observe(document.body,{childList:true,subtree:true})})})();
 </script>
 </body></html>
